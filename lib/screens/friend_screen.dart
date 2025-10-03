@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/friend.dart';
 import '../widgets/friend_card.dart';
 import '../services/friend_service.dart';
+import '../database/db_helper.dart';
 
 class FriendScreen extends StatefulWidget {
   const FriendScreen({super.key});
@@ -15,23 +16,34 @@ class _FriendScreenState extends State<FriendScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
 
-  final FriendService _friendService = FriendService();
+  final DBHelper _dbHelper = DBHelper();
+  List<Friend> _friends = [];
 
-  void _addFriend() {
+  @override
+  void initState() {
+    super.initState();
+    _loadFriends();
+  }
+
+  Future<void> _loadFriends() async {
+    final data = await _dbHelper.getFriends();
+    setState(() => _friends = data);
+  }
+
+  Future<void> _addFriend() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _friendService.addFriend(
-          _nameController.text,
-          email: _emailController.text.isEmpty ? null : _emailController.text,
-        );
-        _nameController.clear();
-        _emailController.clear();
-      });
+      final friend = Friend(
+        name: _nameController.text,
+        email: _emailController.text.isEmpty ? null : _emailController.text,
+      );
+      await _dbHelper.addFriend(friend);
+      _nameController.clear();
+      _emailController.clear();
+      _loadFriends();
     }
   }
 
-  void _editFriend(int index) {
-    final friend = _friendService.friends[index];
+  Future<void> _editFriend(Friend friend) async {
     _nameController.text = friend.name;
     _emailController.text = friend.email ?? '';
 
@@ -58,17 +70,16 @@ class _FriendScreenState extends State<FriendScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _friendService.editFriend(
-                  index,
-                  _nameController.text,
-                  email: _emailController.text.isEmpty ? null : _emailController.text,
-                );
-              });
-              _nameController.clear();
-              _emailController.clear();
+            onPressed: () async {
+              final updated = Friend(
+                id: friend.id,
+                name: _nameController.text,
+                email: _emailController.text.isEmpty ? null : _emailController.text,
+                balance: friend.balance,
+              );
+              await _dbHelper.updateFriend(updated);
               Navigator.pop(context);
+              _loadFriends();
             },
             child: const Text('Save'),
           ),
@@ -77,9 +88,8 @@ class _FriendScreenState extends State<FriendScreen> {
     );
   }
 
-  void _deleteFriend(int index) {
-    final success = _friendService.deleteFriend(index);
-    if (!success) {
+  Future<void> _deleteFriend(Friend friend) async {
+    if (friend.balance != 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Cannot delete friend. Balance must be 0.'),
@@ -88,8 +98,11 @@ class _FriendScreenState extends State<FriendScreen> {
       );
       return;
     }
-    setState(() {}); // refresh UI
+    await _dbHelper.deleteFriend(friend.id!);
+    _loadFriends();
   }
+
+  // final FriendService _friendService = FriendService();
 
   @override
   void dispose() {
@@ -100,7 +113,6 @@ class _FriendScreenState extends State<FriendScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final friends = _friendService.friends;
 
     return Scaffold(
       appBar: AppBar(
@@ -148,16 +160,16 @@ class _FriendScreenState extends State<FriendScreen> {
             const SizedBox(height: 20),
             // Display List of Friends
             Expanded(
-              child: friends.isEmpty
+              child: _friends.isEmpty
                 ? const Center(child: Text('No friends added yet'))
                 : ListView.builder(
-                    itemCount: friends.length,
+                    itemCount: _friends.length,
                     itemBuilder: (context, index) {
-                      final friend = friends[index];
+                      final friend = _friends[index];
                       return FriendCard(
                         friend: friend,
-                        onEdit: () => _editFriend(index),
-                        onDelete: () => _deleteFriend(index),
+                        onEdit: () => _editFriend(friend),
+                        onDelete: () => _deleteFriend(friend),
                       );
                     },
                   ),
