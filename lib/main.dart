@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
-import 'screens/home_screen.dart';
+import 'navigation.dart';
 
 void main() {
-  runApp(SplitwiseAppUI());
+  runApp(const SplitmoneyAppUI());
 }
 
-class SplitwiseAppUI extends StatelessWidget {
+class SplitmoneyAppUI extends StatelessWidget {
+  const SplitmoneyAppUI({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Splitmoney',
       theme: ThemeData(primarySwatch: Colors.teal),
-      home: HomeScreen(),
+      home: const BottomNavScreen(),
     );
   }
 }
