@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/friend.dart';
+import '../widgets/friend_card.dart';
 
 class FriendScreen extends StatefulWidget {
   const FriendScreen({super.key});
@@ -21,11 +22,74 @@ class _FriendScreenState extends State<FriendScreen> {
         _friends.add(Friend(
           name: _nameController.text,
           email: _emailController.text.isEmpty ? null : _emailController.text,
+          balance: 0.0,
         ));
         _nameController.clear();
         _emailController.clear();
       });
     }
+  }
+
+  void _editFriend(int index) {
+    final friend = _friends[index];
+    _nameController.text = friend.name;
+    _emailController.text = friend.email ?? '';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Friend'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Name'),
+            ),
+            TextField(
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: 'Email (optional)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                friend.name = _nameController.text;
+                friend.email =
+                    _emailController.text.isEmpty ? null : _emailController.text;
+              });
+              _nameController.clear();
+              _emailController.clear();
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteFriend(int index) {
+    final friend = _friends[index];
+    if (friend.balance != 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot delete friend. Balance must be 0.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _friends.removeAt(index);
+    });
   }
 
   @override
@@ -71,6 +135,10 @@ class _FriendScreenState extends State<FriendScreen> {
                   const SizedBox(height: 10),
                   ElevatedButton(
                     onPressed: _addFriend,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                    ),
                     child: const Text('Add Friend'),
                   ),
                 ],
@@ -80,26 +148,18 @@ class _FriendScreenState extends State<FriendScreen> {
             // Display List of Friends
             Expanded(
               child: _friends.isEmpty
-                  ? const Center(child: Text('No friends added yet'))
-                  : ListView.builder(
-                      itemCount: _friends.length,
-                      itemBuilder: (context, index) {
-                        final friend = _friends[index];
-                        return Card(
-                          margin: EdgeInsets.symmetric(vertical: 6),
-                          elevation: 3,
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.teal,
-                              child: Text(friend.name[0].toUpperCase(),
-                                  style: TextStyle(color: Colors.white)),
-                            ),
-                            title: Text(friend.name, style: TextStyle(fontSize: 18)),
-                            subtitle: friend.email != null ? Text(friend.email!) : null,
-                          ),
-                        );
-                      },
-                    ),
+                ? const Center(child: Text('No friends added yet'))
+                : ListView.builder(
+                    itemCount: _friends.length,
+                    itemBuilder: (context, index) {
+                      final friend = _friends[index];
+                      return FriendCard(
+                        friend: friend,
+                        onEdit: () => _editFriend(index),
+                        onDelete: () => _deleteFriend(index),
+                      );
+                    },
+                  ),
             ),
           ],
         ),
