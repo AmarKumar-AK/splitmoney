@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/friend.dart';
 import '../widgets/friend_card.dart';
+import '../services/friend_service.dart';
 
 class FriendScreen extends StatefulWidget {
   const FriendScreen({super.key});
@@ -14,16 +15,15 @@ class _FriendScreenState extends State<FriendScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
 
-  final List<Friend> _friends = [];
+  final FriendService _friendService = FriendService();
 
   void _addFriend() {
     if (_formKey.currentState!.validate()) {
       setState(() {
-        _friends.add(Friend(
-          name: _nameController.text,
+        _friendService.addFriend(
+          _nameController.text,
           email: _emailController.text.isEmpty ? null : _emailController.text,
-          balance: 0.0,
-        ));
+        );
         _nameController.clear();
         _emailController.clear();
       });
@@ -31,7 +31,7 @@ class _FriendScreenState extends State<FriendScreen> {
   }
 
   void _editFriend(int index) {
-    final friend = _friends[index];
+    final friend = _friendService.friends[index];
     _nameController.text = friend.name;
     _emailController.text = friend.email ?? '';
 
@@ -60,9 +60,11 @@ class _FriendScreenState extends State<FriendScreen> {
           ElevatedButton(
             onPressed: () {
               setState(() {
-                friend.name = _nameController.text;
-                friend.email =
-                    _emailController.text.isEmpty ? null : _emailController.text;
+                _friendService.editFriend(
+                  index,
+                  _nameController.text,
+                  email: _emailController.text.isEmpty ? null : _emailController.text,
+                );
               });
               _nameController.clear();
               _emailController.clear();
@@ -76,8 +78,8 @@ class _FriendScreenState extends State<FriendScreen> {
   }
 
   void _deleteFriend(int index) {
-    final friend = _friends[index];
-    if (friend.balance != 0) {
+    final success = _friendService.deleteFriend(index);
+    if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Cannot delete friend. Balance must be 0.'),
@@ -86,10 +88,7 @@ class _FriendScreenState extends State<FriendScreen> {
       );
       return;
     }
-
-    setState(() {
-      _friends.removeAt(index);
-    });
+    setState(() {}); // refresh UI
   }
 
   @override
@@ -101,6 +100,8 @@ class _FriendScreenState extends State<FriendScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final friends = _friendService.friends;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Friends'),
@@ -147,12 +148,12 @@ class _FriendScreenState extends State<FriendScreen> {
             const SizedBox(height: 20),
             // Display List of Friends
             Expanded(
-              child: _friends.isEmpty
+              child: friends.isEmpty
                 ? const Center(child: Text('No friends added yet'))
                 : ListView.builder(
-                    itemCount: _friends.length,
+                    itemCount: friends.length,
                     itemBuilder: (context, index) {
-                      final friend = _friends[index];
+                      final friend = friends[index];
                       return FriendCard(
                         friend: friend,
                         onEdit: () => _editFriend(index),
